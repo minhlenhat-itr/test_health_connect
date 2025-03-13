@@ -12,6 +12,8 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.WebView
+import android.widget.ImageView
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_AVAILABLE
@@ -37,6 +39,7 @@ import java.time.Instant
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import androidx.core.net.toUri
+import com.google.android.material.bottomsheet.BottomSheetDialog
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -79,6 +82,10 @@ class FirstFragment : Fragment() {
     private val requestPermissionLauncher =
         registerForActivityResult(requestPermissionsActivityContract()) { grantedPermissions ->
             Log.e(TAG, "requestPermissionLauncher: $grantedPermissions")
+
+            /// will cause error when delete health connect app
+            healthConnectClient =
+                HealthConnectClient.getOrCreate(requireView().context)
         }
 
     /**
@@ -98,11 +105,6 @@ class FirstFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        /// will cause error when delete health connect app
-        healthConnectClient =
-            HealthConnectClient.getOrCreate(view.context)
-
         binding.btnCheckPermission.setOnClickListener {
             CoroutineScope(Dispatchers.IO).launch {
                 coroutineScope {
@@ -117,9 +119,6 @@ class FirstFragment : Fragment() {
             val request = requestPermissionsActivityContract()
             requestPermissionLauncher.launch(permissions)
 
-        }
-        binding.btnOpenGoogleHealthConnectApp.setOnClickListener {
-            //
         }
         binding.checkHealthConnectIsDownloaded.setOnClickListener {
             val sdkAvailable = HealthConnectClient.getSdkStatus(requireContext())
@@ -155,7 +154,13 @@ class FirstFragment : Fragment() {
         }
 
         binding.btnOpenGoogleHealthConnectAppStore.setOnClickListener {
-            openHealthConnectOnPlayStore(requireContext())
+//            openHealthConnectOnPlayStore(requireContext())
+            showPlayStoreBottomSheet(requireContext())
+        }
+
+        binding.btnOpenGoogleHealthConnectApp.setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, "healthconnect://open".toUri())
+            startActivity(intent)
         }
 
     }
@@ -174,6 +179,24 @@ class FirstFragment : Fragment() {
             // If Play Store is not installed, open in a web browser
             context.startActivity(Intent(Intent.ACTION_VIEW, webUrl.toUri()))
         }
+    }
+
+    fun showPlayStoreBottomSheet(context: Context) {
+        val dialog = BottomSheetDialog(context)
+        val view = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_play_store, null)
+        dialog.setContentView(view)
+
+        val webView = view.findViewById<WebView>(R.id.webView)
+        val closeButton = view.findViewById<ImageView>(R.id.closeButton)
+
+        // Configure WebView
+        webView.settings.javaScriptEnabled = true
+        webView.loadUrl("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata")
+
+        // Close Bottom Sheet when clicking close button
+        closeButton.setOnClickListener { dialog.dismiss() }
+
+        dialog.show()
     }
 
     override fun onDestroyView() {
